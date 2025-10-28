@@ -867,6 +867,24 @@ const ExcalidrawWrapper = () => {
           }
         }}
       >
+        <div
+  style={{
+    position: "fixed",
+    left: 10,
+    bottom: 10,
+    zIndex: 9999,
+    padding: "6px 8px",
+    background: "rgba(0,0,0,0.7)",
+    color: "#fff",
+    fontFamily: "ui-monospace, Menlo, Consolas, monospace",
+    fontSize: 12,
+    borderRadius: 6,
+  }}
+>
+  ✅ Test overlay — ik ben zichtbaar
+</div>
+
+
         <AppMainMenu
           onCollabDialogOpen={onCollabDialogOpen}
           isCollaborating={isCollaborating}
@@ -911,6 +929,8 @@ const ExcalidrawWrapper = () => {
         {localStorageQuotaExceeded && (
           <div className="alert alert--danger">
             {t("alerts.localStorageQuotaExceeded")}
+            <div style={{position:'fixed',left:300,bottom:300,background:'#28c2caff',color:'#e11919ff',padding:600}}>Hallo!</div>
+
           </div>
         )}
         {latestShareableLink && (
