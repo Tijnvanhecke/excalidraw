@@ -1,3 +1,6 @@
+
+import { DebugOverlay } from "./debug/DebugOverlay";
+import { attachGlobalInputLogging, withExportLog } from "./debug/log";
 import {
   Excalidraw,
   LiveCollaborationTrigger,
@@ -342,6 +345,11 @@ const ExcalidrawWrapper = () => {
 
   const [langCode, setLangCode] = useAppLangCode();
 
+    // 🔍 Debug overlay + logging (Prompt 1.4)
+  const overlayRef = useRef<DebugOverlay | null>(null);
+  const [cleanupLog, setCleanupLog] = useState<null | (() => void)>(null);
+
+
   // initial state
   // ---------------------------------------------------------------------------
 
@@ -365,6 +373,25 @@ const ExcalidrawWrapper = () => {
 
   const [excalidrawAPI, excalidrawRefCallback] =
     useCallbackRefState<ExcalidrawImperativeAPI>();
+
+      // Start overlay + input-logging zodra excalidrawAPI beschikbaar is
+  useEffect(() => {
+    if (!excalidrawAPI) return;
+
+    const cleanup = attachGlobalInputLogging();
+    setCleanupLog(() => cleanup);
+
+    overlayRef.current = new DebugOverlay({
+      getAppState: () => excalidrawAPI.getAppState(),
+      getSceneElements: () => excalidrawAPI.getSceneElements(),
+    } as any);
+
+    return () => {
+      cleanup?.();
+      overlayRef.current?.destroy();
+    };
+  }, [excalidrawAPI]);
+
 
   const [, setShareDialogState] = useAtom(shareDialogStateAtom);
   const [collabAPI] = useAtom(collabAPIAtom);
@@ -867,22 +894,7 @@ const ExcalidrawWrapper = () => {
           }
         }}
       >
-        <div
-  style={{
-    position: "fixed",
-    left: 10,
-    bottom: 10,
-    zIndex: 9999,
-    padding: "6px 8px",
-    background: "rgba(0,0,0,0.7)",
-    color: "#fff",
-    fontFamily: "ui-monospace, Menlo, Consolas, monospace",
-    fontSize: 12,
-    borderRadius: 6,
-  }}
->
-  ✅ Test overlay — ik ben zichtbaar
-</div>
+    
 
 
         <AppMainMenu
