@@ -1,4 +1,5 @@
-
+import { exportStrokesJSON, downloadJSON } from "./persistence/persist";
+import { importStrokesJSON, validateSketchJSON } from "./persistence/restore";
 import { DebugOverlay } from "./debug/DebugOverlay";
 import { attachGlobalInputLogging, withExportLog } from "./debug/log";
 import {
@@ -339,6 +340,7 @@ const initializeScene = async (opts: {
 
 const ExcalidrawWrapper = () => {
   const [errorMessage, setErrorMessage] = useState("");
+  const AUTOSAVE_KEY = "autosave-sketch-v1";
   const isCollabDisabled = isRunningInIframe();
 
   const { editorTheme, appTheme, setAppTheme } = useHandleAppTheme();
@@ -348,6 +350,8 @@ const ExcalidrawWrapper = () => {
     // 🔍 Debug overlay + logging (Prompt 1.4)
   const overlayRef = useRef<DebugOverlay | null>(null);
   const [cleanupLog, setCleanupLog] = useState<null | (() => void)>(null);
+
+
 
 
   // initial state
@@ -423,6 +427,22 @@ const ExcalidrawWrapper = () => {
       forceRefresh((prev) => !prev);
     }
   }, [excalidrawAPI]);
+
+  // 🔸 Herstel autosave bij opstart
+  useEffect(() => {
+    if (!excalidrawAPI) return;
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return;
+    if (confirm("Autosave gevonden. Wil je herstellen?")) {
+      try {
+        const json = validateSketchJSON(JSON.parse(raw));
+        importStrokesJSON(excalidrawAPI, json);
+      } catch (err) {
+        console.error("Autosave herstel mislukt:", err);
+      }
+    }
+  }, [excalidrawAPI]);
+
 
   useEffect(() => {
     if (!excalidrawAPI || (!isCollabDisabled && !collabAPI)) {
@@ -694,6 +714,15 @@ const ExcalidrawWrapper = () => {
         () => forceRefresh((prev) => !prev),
       );
     }
+
+        // 🔸 Autosave (localStorage)
+    try {
+      if (excalidrawAPI) {
+        const json = exportStrokesJSON(excalidrawAPI);
+        localStorage.setItem("autosave-sketch-v1", JSON.stringify(json));
+      }
+    } catch {}
+
   };
 
   const [latestShareableLink, setLatestShareableLink] = useState<string | null>(
@@ -752,6 +781,31 @@ const ExcalidrawWrapper = () => {
       />
     );
   };
+
+  // -----------------------------
+  // 🔸 Export & Import JSON
+  // -----------------------------
+  const onExportJSON = () => {
+    if (!excalidrawAPI) return;
+    const json = exportStrokesJSON(excalidrawAPI);
+    downloadJSON(json, "sketch.json");
+  };
+
+  const onImportJSON = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = e.target.files?.[0];
+      if (!file || !excalidrawAPI) return;
+      const text = await file.text();
+      const json = validateSketchJSON(JSON.parse(text));
+      importStrokesJSON(excalidrawAPI, json);
+      alert("Import gelukt!");
+    } catch (err: any) {
+      alert("Import mislukt: " + err.message);
+    } finally {
+      e.currentTarget.value = "";
+    }
+  };
+
 
   const isOffline = useAtomValue(isOfflineAtom);
 
@@ -895,6 +949,34 @@ const ExcalidrawWrapper = () => {
         }}
       >
     
+        {/* 🔸 Export/Import JSON Buttons */}
+        <button
+          onClick={onExportJSON}
+          style={{
+            position: "fixed",
+            right: 20,
+            bottom: 20,
+            zIndex: 9999,
+            padding: "6px 10px",
+            background: "#222",
+            color: "#fff",
+            borderRadius: 6,
+          }}
+        >
+          Export JSON
+        </button>
+
+        <input
+          type="file"
+          accept="application/json"
+          onChange={onImportJSON}
+          style={{
+            position: "fixed",
+            right: 20,
+            bottom: 60,
+            zIndex: 9999,
+          }}
+        />
 
 
         <AppMainMenu
